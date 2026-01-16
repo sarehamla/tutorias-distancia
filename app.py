@@ -8,139 +8,117 @@ from datetime import datetime, date
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Actions Arca Real", layout="centered", page_icon="⚫")
 
-# --- PALETA "ACTIONS" (Colores Neón/Vibrantes sobre Negro) ---
-COLORES_ACTIONS = [
-    "#FF296D", # Rosa Neón
-    "#00FFF5", # Cian Eléctrico
-    "#7FFF00", # Verde Lima
-    "#FF9F1C", # Naranja Vivo
-    "#D65DB1", # Púrpura
-    "#FFEE00", # Amarillo
-    "#00A8E8", # Azul Vivo
-    "#FF4D4D", # Rojo Brillante
-    "#B967FF", # Violeta
-    "#32FF7E"  # Menta
+# --- PALETA NEÓN "ACTIONS" ---
+COLORES_NEON = [
+    "#FF296D", "#00FFF5", "#7FFF00", "#FF9F1C", "#D65DB1", 
+    "#FFEE00", "#00A8E8", "#FF4D4D", "#B967FF", "#32FF7E"
 ]
 
 def get_color_materia(texto):
-    """Asigna un color neón consistente a cada módulo."""
     if not isinstance(texto, str): return "#888"
     hash_obj = hashlib.md5(texto.encode())
-    hash_int = int(hash_obj.hexdigest(), 16)
-    return COLORES_ACTIONS[hash_int % len(COLORES_ACTIONS)]
+    return COLORES_NEON[int(hash_obj.hexdigest(), 16) % len(COLORES_NEON)]
 
-# --- ESTILOS CSS (ACTIONS DARK MODE) ---
+# --- ESTILOS CSS (DARK MODE TOTAL: SIDEBAR + CARDS) ---
 st.markdown("""
 <style>
-    /* Fuente moderna sans-serif (estilo Inter/Roboto) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
 
-    /* --- FONDO NEGRO PROFUNDO (Global) --- */
+    /* --- 1. FONDO GLOBAL NEGRO --- */
     .stApp {
-        background-color: #101010;
+        background-color: #050505 !important;
         color: #ffffff;
-    }
-    
-    /* Forzar texto blanco en general */
-    h1, h2, h3, p, div, span {
         font-family: 'Inter', sans-serif;
-        color: #eeeeee;
     }
 
-    /* Ocultar elementos decorativos de Streamlit */
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-
-    /* --- CABECERAS --- */
-    h1 {
-        font-weight: 800;
-        letter-spacing: -1px;
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
+    /* --- 2. SIDEBAR (MENÚ IZQUIERDO) OSCURO --- */
+    [data-testid="stSidebar"] {
+        background-color: #0a0a0a !important; /* Un pelín más claro que el fondo */
+        border-right: 1px solid #222;
     }
     
-    /* --- SEPARADOR DE DÍA (Minimalista) --- */
-    .day-header-actions {
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        color: #666; /* Gris oscuro para el día, sutil */
-        margin-top: 40px;
-        margin-bottom: 15px;
-        border-bottom: 1px solid #222;
-        padding-bottom: 5px;
-        font-weight: 600;
+    /* Textos del sidebar */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] div {
+        color: #e0e0e0 !important;
     }
 
-    /* --- FILAS DE EVENTOS (Estilo Lista Actions) --- */
-    .action-row {
+    /* --- 3. TARJETAS OSCURAS (AGENDA) --- */
+    .action-card {
+        background-color: #1a1a1a; /* Gris muy oscuro para la tarjeta */
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
-        padding: 12px 0;
-        border-bottom: 1px solid #1a1a1a; /* Línea separadora muy sutil */
-        transition: background 0.2s;
+        transition: transform 0.2s, background-color 0.2s;
     }
-    .action-row:hover {
-        background-color: #1a1a1a;
-        border-radius: 8px;
-        padding-left: 10px; /* Pequeño movimiento al pasar mouse */
-        margin-left: -10px;
+    
+    .action-card:hover {
+        background-color: #222; /* Se aclara un poco al pasar el ratón */
+        transform: translateX(4px);
+        border-color: #444;
     }
 
-    /* Columna de Color (El punto o barra) */
-    .color-indicator {
-        width: 6px;
-        height: 40px;
-        border-radius: 4px;
-        margin-right: 15px;
-        flex-shrink: 0;
-        box-shadow: 0 0 8px rgba(0,0,0,0.5); /* Resplandor neón */
+    /* --- 4. TIPOGRAFÍA Y ELEMENTOS --- */
+    h1, h2, h3, p { color: #ffffff !important; }
+    
+    .day-header {
+        color: #666;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-top: 30px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #222;
+        padding-bottom: 5px;
+        font-weight: 700;
     }
 
-    /* Columna de Texto Principal */
-    .content-col {
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
+    /* Elementos dentro de la tarjeta */
     .module-title {
         font-size: 1.1rem;
-        font-weight: 600;
-        margin-bottom: 2px;
-        /* El color se inyecta por línea */
+        font-weight: 700;
+        margin-bottom: 4px;
+        /* El color se inyecta inline */
     }
-
-    .task-detail {
+    
+    .module-detail {
         font-size: 0.9rem;
-        color: #888 !important;
+        color: #aaa;
         font-weight: 300;
     }
 
-    /* Columna de Hora (Derecha, discreta) */
-    .time-col {
-        text-align: right;
-        font-size: 0.85rem;
-        color: #555 !important;
-        font-weight: 600;
-        min-width: 80px;
-    }
-
-    /* Etiquetas sutiles */
-    .meta-tag {
-        font-size: 0.7rem;
-        background-color: #222;
-        padding: 2px 6px;
+    .time-badge {
+        background-color: #000;
+        color: #fff;
+        padding: 4px 8px;
         border-radius: 4px;
-        color: #aaa !important;
-        margin-top: 4px;
-        display: inline-block;
-        width: fit-content;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: 1px solid #333;
+        white-space: nowrap;
     }
 
-    /* --- CALENDARIO DARK --- */
+    .prof-badge {
+        font-size: 0.75rem;
+        color: #666;
+        margin-top: 6px;
+    }
+
+    /* Barra lateral de color neón */
+    .color-bar {
+        width: 4px;
+        height: 50px;
+        border-radius: 2px;
+        margin-right: 15px;
+        box-shadow: 0 0 8px rgba(0,0,0,0.3);
+    }
+
+    /* --- 5. CALENDARIO DARK --- */
     .day-cell {
-        background-color: #161616;
+        background-color: #111;
         border: 1px solid #222;
         border-radius: 6px;
         height: 100px;
@@ -148,32 +126,35 @@ st.markdown("""
         overflow-y: auto;
     }
     .current-day-cell {
-        border: 1px solid #fff !important;
         background-color: #000 !important;
+        border: 1px solid #fff !important;
     }
     .cal-event {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         background-color: #222;
+        color: #ddd;
+        padding: 2px 4px;
         margin-bottom: 2px;
-        padding: 2px 5px;
         border-radius: 3px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        border-left-width: 2px; 
+        border-left-style: solid;
     }
+    .day-num { text-align: right; color: #555; font-weight: bold; font-size: 0.9rem; }
 
-    /* Scrollbars invisibles o muy oscuras */
-    ::-webkit-scrollbar { width: 6px; background: #101010; }
+    /* Scrollbars oscuras */
+    ::-webkit-scrollbar { width: 6px; background: #050505; }
     ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
 
 </style>
 """, unsafe_allow_html=True)
 
-# --- CONFIG ---
+# --- FUNCIONES ---
 MESES = {1:"Enero", 2:"Febrero", 3:"Marzo", 4:"Abril", 5:"Mayo", 6:"Junio", 7:"Julio", 8:"Agosto", 9:"Septiembre", 10:"Octubre", 11:"Noviembre", 12:"Diciembre"}
 DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
-# --- FUNCIONES ---
 def limpiar_materia(txt):
     if not isinstance(txt, str): return "Desconocida"
     txt = re.sub(r'\s*[-–]?\s*UT.*', '', txt, flags=re.IGNORECASE)
@@ -202,7 +183,7 @@ def parsear_fecha(txt):
 @st.cache_data
 def cargar_datos():
     lista = []
-    # ARCHIVOS
+    # ¡Revisa que los nombres de archivo sean correctos!
     archivos = [("cfgm.csv", "CFGM Gestión"), ("cfgs.csv", "CFGS Finanzas")]
     for f_name, c_name in archivos:
         try:
@@ -215,75 +196,81 @@ def cargar_datos():
         except: continue
     return pd.DataFrame(lista)
 
-# --- MAIN ---
+# --- CARGA DATOS ---
 df = cargar_datos()
-if df.empty:
-    st.error("No se encontraron los datos.")
-    st.stop()
 
-# --- SIDEBAR ---
+# --- SIDEBAR OSCURO ---
 with st.sidebar:
     st.markdown("### ⚙️ Preferencias")
-    ciclos = sorted(df['Ciclo'].unique())
-    sel_ciclo = st.multiselect("Ciclo", ciclos, default=ciclos)
-    df_f = df[df['Ciclo'].isin(sel_ciclo)]
     
-    materias = sorted(df_f['Módulo'].unique())
-    sel_mat = st.multiselect("Módulo formativo", materias)
-    if sel_mat: df_f = df_f[df_f['Módulo'].isin(sel_mat)]
-    
-    st.markdown("---")
-    st.caption("Modo Actions Dark")
+    if not df.empty:
+        ciclos = sorted(df['Ciclo'].unique())
+        sel_ciclo = st.multiselect("Ciclo", ciclos, default=ciclos)
+        df_f = df[df['Ciclo'].isin(sel_ciclo)]
+        
+        materias = sorted(df_f['Módulo'].unique())
+        sel_mat = st.multiselect("Módulo formativo", materias)
+        if sel_mat: df_f = df_f[df_f['Módulo'].isin(sel_mat)]
+    else:
+        st.error("No hay datos cargados.")
+        df_f = pd.DataFrame()
 
-# --- VISTAS ---
+    st.markdown("---")
+    st.caption("Modo Oscuro | Actions Style")
+
+# --- INTERFAZ PRINCIPAL ---
 st.title("Tutorías")
 
-tab_agenda, tab_cal = st.tabs(["Listado", "Calendario"])
+if df_f.empty:
+    st.info("No hay datos para mostrar.")
+    st.stop()
 
-# --- VISTA 1: LISTADO ACTIONS (Minimalista) ---
+tab_agenda, tab_cal = st.tabs(["LISTA", "CALENDARIO"])
+
+# --- VISTA 1: AGENDA OSCURA ---
 with tab_agenda:
     hoy = date.today()
     df_view = df_f[df_f['Fecha'] >= hoy].sort_values(['Fecha', 'Inicio'])
     
-    if df_view.empty: st.info("No hay tareas pendientes.")
+    if df_view.empty: st.markdown("✅ *No hay tutorías pendientes.*")
     
     for fecha, grupo in df_view.groupby('Fecha'):
         dia_str = DIAS[fecha.weekday()]
         fecha_fmt = f"{dia_str}, {fecha.day} {MESES[fecha.month]}"
         
-        # Cabecera de día minimalista (Gris oscuro, mayúsculas)
-        st.markdown(f'<div class="day-header-actions">{fecha_fmt}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="day-header">{fecha_fmt}</div>', unsafe_allow_html=True)
         
         for _, row in grupo.iterrows():
             c_neon = get_color_materia(row['Módulo'])
             
-            # HTML ESTRUCTURADO TIPO ACTIONS
+            # TARJETA OSCURA CON HTML/CSS INYECTADO
             st.markdown(f"""
-<div class="action-row">
-    <div class="color-indicator" style="background-color: {c_neon}; box-shadow: 0 0 10px {c_neon}40;"></div>
-    
-    <div class="content-col">
-        <div class="module-title" style="color: {c_neon};">{row['Módulo']}</div>
-        <div class="task-detail">{row['Detalle']}</div>
-        <div class="meta-tag">👨‍🏫 {row['Profesor']}</div>
-    </div>
-    
-    <div class="time-col">
-        {row['Inicio']}
-    </div>
-</div>
-""", unsafe_allow_html=True)
+            <div class="action-card">
+                <div class="color-bar" style="background-color: {c_neon}; box-shadow: 0 0 8px {c_neon}60;"></div>
+                <div style="flex-grow:1;">
+                    <div class="module-title" style="color: {c_neon};">{row['Módulo']}</div>
+                    <div class="module-detail">{row['Detalle']}</div>
+                    <div class="prof-badge">👨‍🏫 {row['Profesor']}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="time-badge">{row['Inicio']}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-# --- VISTA 2: CALENDARIO ACTIONS ---
+# --- VISTA 2: CALENDARIO OSCURO ---
 with tab_cal:
     c1, c2 = st.columns([1,3])
     with c1:
-        mes_v = st.selectbox("Mes", list(MESES.keys()), index=hoy.month-1, format_func=lambda x: MESES[x])
-        anio_v = st.number_input("Año", value=hoy.year)
+        mes_v = st.selectbox("Mes", list(MESES.keys()), index=date.today().month-1, format_func=lambda x: MESES[x])
+        anio_v = st.number_input("Año", value=date.today().year)
     
     cal = calendar.monthcalendar(anio_v, mes_v)
+    
+    # Cabecera días
     cols = st.columns(7)
-    for i, d in enumerate(DIAS): cols[i].markdown(f"<div style='color:#666; font-size:0.8rem; text-align:center'>{d[:3]}</div>", unsafe_allow_html=True)
+    for i, d in enumerate(DIAS): 
+        cols[i].markdown(f"<div style='text-align:center; color:#666; font-size:0.8rem'>{d[:3]}</div>", unsafe_allow_html=True)
     
     for sem in cal:
         cols = st.columns(7)
@@ -291,13 +278,17 @@ with tab_cal:
             with cols[i]:
                 if d != 0:
                     f_celda = date(anio_v, mes_v, d)
-                    clase = "current-day-cell" if f_celda == hoy else ""
+                    clase = "current-day-cell" if f_celda == date.today() else ""
                     evs = df_f[df_f['Fecha'] == f_celda]
                     
                     html_evs = ""
                     for _, e in evs.iterrows():
                         c_ev = get_color_materia(e['Módulo'])
-                        # Eventos en calendario: texto de color sobre fondo negro
-                        html_evs += f'<div class="cal-event" style="color:{c_ev}; border-left: 2px solid {c_ev};">{e["Inicio"]}</div>'
+                        html_evs += f'<div class="cal-event" style="border-left-color:{c_ev};">{e["Inicio"]} {e["Módulo"][:8]}..</div>'
                     
-                    st.markdown(f"""<div class="day-cell {clase}"><div style="text-align:right; color:#444; font-weight:bold;">{d}</div>{html_evs}</div>""", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div class="day-cell {clase}">
+                        <div class="day-num">{d}</div>
+                        {html_evs}
+                    </div>
+                    """, unsafe_allow_html=True)
