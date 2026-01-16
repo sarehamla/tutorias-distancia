@@ -1,184 +1,238 @@
 import streamlit as st
 import pandas as pd
 import re
-from datetime import datetime
+import calendar
+from datetime import datetime, date
 
-# Configuración de la página
+# --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Tutorías IES Arca Real", layout="wide", page_icon="📅")
 
-st.title("📚 Visor de Tutorías - IES Arca Real")
-st.markdown("Gestión Administrativa (CFGM) y Administración y Finanzas (CFGS)")
+# --- CONSTANTES DE IDIOMA (Para asegurar español siempre) ---
+MESES_ES = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+}
+DIAS_ES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
 # --- FUNCIONES DE LIMPIEZA ---
 
-def parsear_fecha_compleja(fecha_str):
+def limpiar_texto_fecha(fecha_str):
     """
-    Convierte cadenas como '17 de octubre de 2025 17:20 (CEST) → 19:00'
-    en objetos de fecha y horas separadas.
+    Convierte cadenas complejas de Notion a objetos date y horas limpias.
+    Soporta formato: "17 de octubre de 2025 17:20 (CEST) → 19:00"
     """
     if not isinstance(fecha_str, str):
         return None, None, None
 
-    # Diccionario para meses en español
-    meses = {
+    # Mapeo manual de meses para el parseo
+    meses_map = {
         "enero": "01", "febrero": "02", "marzo": "03", "abril": "04",
         "mayo": "05", "junio": "06", "julio": "07", "agosto": "08",
         "septiembre": "09", "octubre": "10", "noviembre": "11", "diciembre": "12"
     }
 
-    # Intentar limpiar la cadena básica
     try:
         # Extraer fecha base (ej: 17 de octubre de 2025)
-        # Regex busca: digitos + " de " + letras + " de " + digitos
-        match_fecha = re.search(r"(\d{1,2}) de ([a-zA-Z]+) de (\d{4})", fecha_str)
+        match_fecha = re.search(r"(\d{1,2}) de ([a-zA-Z]+) de (\d{4})", fecha_str.lower())
         
         if not match_fecha:
-            return None, None, None # No es una fecha válida
+            return None, None, None
 
         dia, mes_txt, anio = match_fecha.groups()
-        mes_num = meses.get(mes_txt.lower())
+        mes_num = meses_map.get(mes_txt)
+        
+        if not mes_num: return None, None, None
         
         fecha_obj = datetime.strptime(f"{anio}-{mes_num}-{dia}", "%Y-%m-%d").date()
 
         # Extraer Horas
-        # Busca patrones de hora HH:MM
         horas = re.findall(r"(\d{1,2}:\d{2})", fecha_str)
         hora_inicio = horas[0] if len(horas) > 0 else "Consultar"
         hora_fin = horas[1] if len(horas) > 1 else ""
 
         return fecha_obj, hora_inicio, hora_fin
 
-    except Exception as e:
+    except Exception:
         return None, None, None
 
 @st.cache_data
 def cargar_datos():
     datos_totales = []
-
-    # Archivos y etiquetas (Asegúrate de que los nombres coincidan con tus archivos)
-    # Si no renombraste los archivos, cambia 'cfgm.csv' por el nombre largo original
+    # Asegúrate de que estos nombres coinciden con tus archivos en GitHub/Carpeta
     archivos = [
-        ("cfgm.csv", "CFGM Gestión Administrativa"),
-        ("cfgs.csv", "CFGS Administración y Finanzas")
+        ("cfgm.csv", "Gestión Administrativa (CFGM)"),
+        ("cfgs.csv", "Administración y Finanzas (CFGS)")
     ]
 
     for archivo, nombre_ciclo in archivos:
         try:
             df = pd.read_csv(archivo)
-            # Normalizar columnas (quitar espacios extra)
-            df.columns = df.columns.str.strip()
+            df.columns = df.columns.str.strip() # Limpiar espacios en nombres de columnas
             
-            # Procesar cada fila
             for _, row in df.iterrows():
-                nombre_completo = row.get('Nombre', '')
-                fecha_raw = row.get('Fecha', '')
-                profe = row.get('Profesor/a', '')
+                nombre_crudo = str(row.get('Nombre', ''))
+                fecha_raw = str(row.get('Fecha', ''))
+                profe = row.get('Profesor/a', 'Sin asignar')
 
-                # Separar Asignatura de Unidad (UT) si existe el guión "-"
-                if " - " in str(nombre_completo):
-                    partes = str(nombre_completo).split(" - ", 1)
-                    asignatura = partes[0]
-                    detalle = partes[1]
+                # --- LIMPIEZA DE MATERIA (Aquí quitamos lo de UT1, UT2...) ---
+                # Separamos por " - " o por " UT" si el guion no existe pero la UT sí
+                if " - " in nombre_crudo:
+                    partes = nombre_crudo.split(" - ", 1)
+                    asignatura_limpia = partes[0].strip()
+                    detalle = partes[1].strip() # Aquí se queda "UT1"
                 else:
-                    asignatura = nombre_completo
+                    asignatura_limpia = nombre_crudo.strip()
                     detalle = ""
 
-                fecha_obj, h_inicio, h_fin = parsear_fecha_compleja(fecha_raw)
+                # Procesar fecha
+                fecha_obj, h_inicio, h_fin = limpiar_texto_fecha(fecha_raw)
 
-                if fecha_obj: # Solo añadir si la fecha es válida
+                if fecha_obj:
                     datos_totales.append({
                         "Ciclo": nombre_ciclo,
-                        "Asignatura": asignatura,
-                        "Detalle": detalle,
+                        "Asignatura": asignatura_limpia, # Usamos la limpia para el filtro
+                        "Detalle": detalle,              # Guardamos la UT para la tarjeta
                         "Profesor": profe,
                         "Fecha": fecha_obj,
+                        "Año": fecha_obj.year,
+                        "Mes": fecha_obj.month,
                         "Inicio": h_inicio,
-                        "Fin": h_fin,
-                        "Raw": fecha_raw
+                        "Fin": h_fin
                     })
         except FileNotFoundError:
-            st.warning(f"No se encontró el archivo: {archivo}")
             continue
 
     return pd.DataFrame(datos_totales)
 
-# --- LÓGICA PRINCIPAL ---
-
+# --- CARGA INICIAL ---
 df = cargar_datos()
 
 if df.empty:
-    st.error("No hay datos cargados. Por favor verifica que los archivos .csv están en la carpeta.")
+    st.error("⚠️ No se encontraron datos. Verifica que 'cfgm.csv' y 'cfgs.csv' están subidos.")
     st.stop()
 
-# --- BARRA LATERAL (FILTROS) ---
-st.sidebar.header("🔍 Filtros")
+# --- SIDEBAR: FILTROS ---
+st.sidebar.title("🔍 Filtros")
 
 # 1. Filtro Ciclo
-ciclos_disponibles = df['Ciclo'].unique()
-ciclo_sel = st.sidebar.multiselect("Ciclo Formativo", ciclos_disponibles, default=ciclos_disponibles)
+ciclos = df['Ciclo'].unique()
+sel_ciclo = st.sidebar.multiselect("Ciclo Formativo", ciclos, default=ciclos)
+df_f = df[df['Ciclo'].isin(sel_ciclo)]
 
-# Filtrar DF parcial
-df_filtered = df[df['Ciclo'].isin(ciclo_sel)]
+# 2. Filtro Asignatura (AHORA LIMPIO)
+# Al usar 'Asignatura' limpia, sorted y unique, no saldrán repetidas
+asignaturas = sorted(df_f['Asignatura'].unique())
+sel_asig = st.sidebar.multiselect("Materia / Módulo", asignaturas)
 
-# 2. Filtro Asignatura (Dinámico según ciclo)
-asignaturas_disponibles = sorted(df_filtered['Asignatura'].astype(str).unique())
-asig_sel = st.sidebar.multiselect("Asignatura / Módulo", asignaturas_disponibles)
+if sel_asig:
+    df_f = df_f[df_f['Asignatura'].isin(sel_asig)]
 
-# 3. Checkbox pasadas
-mostrar_pasadas = st.sidebar.checkbox("Mostrar tutorías ya pasadas", value=False)
-
-# APLICAR TODOS LOS FILTROS
-if asig_sel:
-    df_filtered = df_filtered[df_filtered['Asignatura'].isin(asig_sel)]
-
+# 3. Opción Pasadas
+mostrar_pasadas = st.sidebar.checkbox("Ver tutorías pasadas", value=False)
 if not mostrar_pasadas:
-    df_filtered = df_filtered[df_filtered['Fecha'] >= datetime.now().date()]
+    df_f = df_f[df_f['Fecha'] >= date.today()]
 
-df_filtered = df_filtered.sort_values(by=['Fecha', 'Inicio'])
+df_f = df_f.sort_values(['Fecha', 'Inicio'])
 
-# --- VISTA PRINCIPAL ---
+# --- INTERFAZ PRINCIPAL ---
+st.title("📚 Calendario de Tutorías")
+st.markdown("IES Arca Real - Formación Profesional Virtual")
 
-tab1, tab2 = st.tabs(["📆 Vista Agenda", "📋 Tabla Detallada"])
+tab1, tab2, tab3 = st.tabs(["📆 Vista Mensual (Calendario)", "📝 Vista Agenda (Lista)", "📋 Tabla Datos"])
 
+# --- PESTAÑA 1: CALENDARIO VISUAL ---
 with tab1:
-    if df_filtered.empty:
-        st.info("No hay tutorías que coincidan con los filtros.")
+    col_a, col_b = st.columns([1, 3])
+    with col_a:
+        # Selectores de mes y año
+        hoy = date.today()
+        sel_anio = st.number_input("Año", min_value=2024, max_value=2030, value=hoy.year)
+        sel_mes_num = st.selectbox(
+            "Mes", 
+            list(MESES_ES.keys()), 
+            format_func=lambda x: MESES_ES[x],
+            index=hoy.month - 1
+        )
     
-    # Agrupar por Mes para visualización limpia
-    df_filtered['Mes_Str'] = pd.to_datetime(df_filtered['Fecha']).dt.strftime('%B %Y').str.capitalize()
-    
-    meses_unicos = df_filtered['Mes_Str'].unique()
-    
-    for mes in meses_unicos:
-        st.subheader(f"🗓️ {mes}")
-        tutorias_mes = df_filtered[df_filtered['Mes_Str'] == mes]
-        
-        # Crear columnas para tarjetas (diseño tipo grid)
-        cols = st.columns(3) # 3 tarjetas por fila
-        for i, (index, row) in enumerate(tutorias_mes.iterrows()):
-            col = cols[i % 3]
-            
-            # Estilo condicional si es HOY
-            es_hoy = row['Fecha'] == datetime.now().date()
-            borde = "2px solid #ff4b4b" if es_hoy else "1px solid #ddd"
-            bg = "#ffecec" if es_hoy else "#ffffff"
-            
-            with col:
-                st.markdown(f"""
-                <div style="border: {borde}; background-color: {bg}; padding: 15px; border-radius: 8px; margin-bottom:10px; height: 100%;">
-                    <small style="color: #666;">{row['Ciclo']}</small>
-                    <h5 style="margin: 5px 0; color: #000;">{row['Asignatura']}</h5>
-                    <p style="font-size: 0.9em; margin-bottom: 5px;"><b>📝 {row['Detalle']}</b></p>
-                    <hr style="margin: 5px 0;">
-                    <p>📅 <b>{row['Fecha'].strftime('%d-%m-%Y')}</b><br>
-                    ⏰ {row['Inicio']} {f'➝ {row["Fin"]}' if row["Fin"] else ''}</p>
-                    <p style="font-size: 0.85em; color: #555;">👨‍🏫 {row['Profesor']}</p>
-                </div>
-                """, unsafe_allow_html=True)
+    with col_b:
+        st.write("") # Espacio
+        st.subheader(f"📅 {MESES_ES[sel_mes_num]} {sel_anio}")
 
+    # Filtrar datos solo para el mes seleccionado (para pintarlos en el calendario)
+    df_cal = df_f[(df_f['Año'] == sel_anio) & (df_f['Mes'] == sel_mes_num)]
+    
+    # Dibujar Cabecera Semanal
+    cols_cabecera = st.columns(7)
+    for i, dia in enumerate(DIAS_ES):
+        cols_cabecera[i].markdown(f"**{dia}**")
+    
+    # Obtener matriz del mes
+    cal_matriz = calendar.monthcalendar(sel_anio, sel_mes_num)
+    
+    for semana in cal_matriz:
+        cols_dias = st.columns(7, gap="small")
+        for i, dia_num in enumerate(semana):
+            if dia_num == 0:
+                cols_dias[i].write("") # Día vacío de otro mes
+            else:
+                # Buscar eventos de este día concreto
+                fecha_actual = date(sel_anio, sel_mes_num, dia_num)
+                eventos_dia = df_cal[df_cal['Fecha'] == fecha_actual]
+                
+                # Estilo del día
+                es_hoy = fecha_actual == date.today()
+                bg_style = "background-color: #ffecec; border: 2px solid #ff4b4b;" if es_hoy else "background-color: #f0f2f6;"
+                
+                with cols_dias[i]:
+                    with st.container():
+                        # Caja del día
+                        st.markdown(f"""
+                        <div style="{bg_style} padding: 5px; border-radius: 5px; min-height: 80px; font-size: 0.8rem;">
+                            <strong style="font-size:1rem;">{dia_num}</strong>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Pintar puntitos o textos si hay eventos
+                        for _, evento in eventos_dia.iterrows():
+                            # Tooltip nativo de Streamlit con help
+                            st.markdown(f"**{evento['Inicio']}**")
+                            st.caption(f"{evento['Asignatura'][:15]}...", help=f"{evento['Asignatura']} - {evento['Detalle']}\nProf: {evento['Profesor']}")
+                            st.divider()
+
+# --- PESTAÑA 2: AGENDA (LISTA) ---
 with tab2:
+    if df_f.empty:
+        st.info("No hay tutorías pendientes con estos filtros.")
+    
+    # Agrupar por mes
+    meses_presentes = df_f['Fecha'].apply(lambda x: f"{MESES_ES[x.month]} {x.year}").unique()
+    
+    for mes_str in meses_presentes:
+        st.subheader(mes_str)
+        # Filtrar solo este mes visual
+        df_mes_visual = df_f[df_f['Fecha'].apply(lambda x: f"{MESES_ES[x.month]} {x.year}") == mes_str]
+        
+        for _, row in df_mes_visual.iterrows():
+            es_hoy = row['Fecha'] == date.today()
+            icono = "🔴 HOY" if es_hoy else "🗓️"
+            color_borde = "red" if es_hoy else "lightgray"
+            
+            with st.expander(f"{icono} {row['Fecha'].day} - {row['Asignatura']} ({row['Inicio']})", expanded=es_hoy):
+                c1, c2 = st.columns([2, 1])
+                with c1:
+                    st.markdown(f"**Módulo:** {row['Asignatura']}")
+                    st.markdown(f"**Unidad/Detalle:** {row['Detalle']}")
+                    st.markdown(f"**Profesor/a:** {row['Profesor']}")
+                with c2:
+                    st.markdown(f"⏰ **{row['Inicio']}**")
+                    if row['Fin']:
+                        st.markdown(f"➝ {row['Fin']}")
+                    st.caption(row['Ciclo'])
+
+# --- PESTAÑA 3: TABLA ---
+with tab3:
     st.dataframe(
-        df_filtered[['Fecha', 'Inicio', 'Fin', 'Ciclo', 'Asignatura', 'Detalle', 'Profesor']],
-        use_container_width=True,
+        df_f[['Fecha', 'Inicio', 'Asignatura', 'Detalle', 'Profesor', 'Ciclo']], 
+        use_container_width=True, 
         hide_index=True
     )
