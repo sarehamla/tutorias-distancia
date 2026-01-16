@@ -6,7 +6,7 @@ import hashlib
 from datetime import datetime, date
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Actions Arca Real", layout="centered", page_icon="⚫")
+st.set_page_config(page_title="Tutorías Arca Real", layout="centered", page_icon="🎓")
 
 # --- PALETA NEÓN "ACTIONS" ---
 COLORES_NEON = [
@@ -19,7 +19,7 @@ def get_color_materia(texto):
     hash_obj = hashlib.md5(texto.encode())
     return COLORES_NEON[int(hash_obj.hexdigest(), 16) % len(COLORES_NEON)]
 
-# --- ESTILOS CSS (DARK MODE TOTAL: SIDEBAR + CARDS) ---
+# --- ESTILOS CSS (DARK MODE TOTAL + INPUTS CORREGIDOS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
@@ -31,9 +31,15 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
 
-    /* --- 2. SIDEBAR (MENÚ IZQUIERDO) OSCURO --- */
+    /* --- 2. BARRA SUPERIOR (HEADER) OSCURA --- */
+    header[data-testid="stHeader"] {
+        background-color: #050505 !important;
+        border-bottom: 1px solid #1a1a1a;
+    }
+
+    /* --- 3. SIDEBAR (MENÚ IZQUIERDO) OSCURO --- */
     [data-testid="stSidebar"] {
-        background-color: #0a0a0a !important; /* Un pelín más claro que el fondo */
+        background-color: #0a0a0a !important;
         border-right: 1px solid #222;
     }
     
@@ -43,9 +49,35 @@ st.markdown("""
         color: #e0e0e0 !important;
     }
 
-    /* --- 3. TARJETAS OSCURAS (AGENDA) --- */
+    /* --- 4. INPUTS Y FILTROS (LOS CUADROS BLANCOS AHORA OSCUROS) --- */
+    /* Fondo del cuadro de selección */
+    div[data-baseweb="select"] > div {
+        background-color: #1a1a1a !important;
+        border-color: #333 !important;
+        color: white !important;
+    }
+    
+    /* Texto dentro del selector */
+    div[data-baseweb="select"] span {
+        color: #e0e0e0 !important;
+    }
+
+    /* Menú desplegable (opciones) */
+    div[role="listbox"] ul {
+        background-color: #1a1a1a !important;
+    }
+    div[role="option"] {
+        color: #e0e0e0 !important;
+    }
+    
+    /* Etiquetas seleccionadas (chips) */
+    div[data-baseweb="tag"] {
+        background-color: #333 !important;
+    }
+
+    /* --- 5. TARJETAS OSCURAS (AGENDA) --- */
     .action-card {
-        background-color: #1a1a1a; /* Gris muy oscuro para la tarjeta */
+        background-color: #161616;
         border: 1px solid #2a2a2a;
         border-radius: 8px;
         padding: 15px;
@@ -56,12 +88,12 @@ st.markdown("""
     }
     
     .action-card:hover {
-        background-color: #222; /* Se aclara un poco al pasar el ratón */
+        background-color: #1f1f1f;
         transform: translateX(4px);
         border-color: #444;
     }
 
-    /* --- 4. TIPOGRAFÍA Y ELEMENTOS --- */
+    /* --- 6. TIPOGRAFÍA Y ELEMENTOS --- */
     h1, h2, h3, p { color: #ffffff !important; }
     
     .day-header {
@@ -76,12 +108,10 @@ st.markdown("""
         font-weight: 700;
     }
 
-    /* Elementos dentro de la tarjeta */
     .module-title {
         font-size: 1.1rem;
         font-weight: 700;
         margin-bottom: 4px;
-        /* El color se inyecta inline */
     }
     
     .module-detail {
@@ -107,7 +137,6 @@ st.markdown("""
         margin-top: 6px;
     }
 
-    /* Barra lateral de color neón */
     .color-bar {
         width: 4px;
         height: 50px;
@@ -116,7 +145,7 @@ st.markdown("""
         box-shadow: 0 0 8px rgba(0,0,0,0.3);
     }
 
-    /* --- 5. CALENDARIO DARK --- */
+    /* --- 7. CALENDARIO DARK --- */
     .day-cell {
         background-color: #111;
         border: 1px solid #222;
@@ -144,7 +173,6 @@ st.markdown("""
     }
     .day-num { text-align: right; color: #555; font-weight: bold; font-size: 0.9rem; }
 
-    /* Scrollbars oscuras */
     ::-webkit-scrollbar { width: 6px; background: #050505; }
     ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
 
@@ -216,10 +244,11 @@ with st.sidebar:
         df_f = pd.DataFrame()
 
     st.markdown("---")
-    st.caption("Modo Oscuro | Actions Style")
+    st.caption("Modo Oscuro | IES Arca Real")
 
 # --- INTERFAZ PRINCIPAL ---
-st.title("Tutorías")
+st.title("Tutorías colectivas CCFF modalidad virtual")
+st.markdown("#### IES Arca Real")
 
 if df_f.empty:
     st.info("No hay datos para mostrar.")
@@ -243,7 +272,6 @@ with tab_agenda:
         for _, row in grupo.iterrows():
             c_neon = get_color_materia(row['Módulo'])
             
-            # TARJETA OSCURA CON HTML/CSS INYECTADO
             st.markdown(f"""
             <div class="action-card">
                 <div class="color-bar" style="background-color: {c_neon}; box-shadow: 0 0 8px {c_neon}60;"></div>
@@ -267,7 +295,6 @@ with tab_cal:
     
     cal = calendar.monthcalendar(anio_v, mes_v)
     
-    # Cabecera días
     cols = st.columns(7)
     for i, d in enumerate(DIAS): 
         cols[i].markdown(f"<div style='text-align:center; color:#666; font-size:0.8rem'>{d[:3]}</div>", unsafe_allow_html=True)
