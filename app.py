@@ -229,6 +229,7 @@ def parsear_fecha(txt):
 @st.cache_data
 def cargar_datos():
     lista = []
+    # ¡Asegúrate de que los nombres de los archivos son los correctos!
     archivos = [("cfgm.csv", "CFGM Gestión"), ("cfgs.csv", "CFGS Finanzas")]
     for f_name, c_name in archivos:
         try:
@@ -246,8 +247,8 @@ df = cargar_datos()
 
 # --- SIDEBAR OSCURO ---
 with st.sidebar:
-    # 1. LOGO
-    st.image("https://cdn-icons-png.flaticon.com/512/3771/3771343.png", width=80) 
+    # 1. LOGO NUEVO
+    st.image("https://iesarcareal.es/wp-content/uploads/2026/01/Copia-de-CICLOS-FORMATIVOS-MODALIDAD-VIRTUAL.png", use_container_width=True) 
     
     st.markdown("### ⚙️ Preferencias")
     
@@ -260,7 +261,6 @@ with st.sidebar:
         sel_mat = st.multiselect("Módulo formativo", materias, placeholder="Elige el módulo")
         if sel_mat: df_f = df_f[df_f['Módulo'].isin(sel_mat)]
         
-        # --- AQUÍ ESTÁ EL NUEVO INTERRUPTOR DE PASADAS ---
         st.markdown("---")
         ver_pasadas = st.toggle("Mostrar tutorías pasadas", value=False)
         
@@ -285,12 +285,9 @@ tab_agenda, tab_cal = st.tabs(["LISTA", "CALENDARIO"])
 with tab_agenda:
     hoy = date.today()
     
-    # LÓGICA DE FILTRADO DE FECHAS
     if ver_pasadas:
-        # Si el usuario quiere ver todo, mostramos todo ordenado
         df_view = df_f.sort_values(['Fecha', 'Inicio'])
     else:
-        # Si no, solo desde hoy en adelante
         df_view = df_f[df_f['Fecha'] >= hoy].sort_values(['Fecha', 'Inicio'])
     
     if df_view.empty: st.markdown("✅ *No hay tutorías pendientes.*")
@@ -304,7 +301,7 @@ with tab_agenda:
         for _, row in grupo.iterrows():
             c_neon = get_color_materia(row['Módulo'])
             
-            # Cálculo de opacidad: si es fecha pasada, se ve semitransparente (0.5), si es futura se ve normal (1)
+            # Opacidad reducida si la fecha ya pasó
             opacidad = "0.5" if row['Fecha'] < hoy else "1"
             
             st.markdown(f"""
