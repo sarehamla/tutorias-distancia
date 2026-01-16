@@ -4,210 +4,285 @@ import re
 import calendar
 from datetime import datetime, date
 
-# --- CONFIGURACIÓN DE PÁGINA ---
+# --- CONFIGURACIÓN GENERAL ---
 st.set_page_config(page_title="Tutorías IES Arca Real", layout="wide", page_icon="📅")
 
-# --- ESTILOS CSS (Para que el calendario se vea bien y tenga scroll) ---
+# --- ESTILOS CSS AVANZADOS (AGENDA ELEGANTE + CALENDARIO) ---
 st.markdown("""
 <style>
+    /* --- CALENDARIO --- */
     .day-cell {
-        border: 1px solid #e0e0e0;
-        height: 140px; 
-        padding: 5px;
-        margin: 2px;
-        border-radius: 5px;
+        border: 1px solid #eee;
+        height: 120px;
         background-color: #ffffff;
-        overflow-y: auto; 
-        font-family: sans-serif;
+        padding: 4px;
+        border-radius: 8px;
+        overflow-y: auto;
+        transition: all 0.2s ease;
+    }
+    .day-cell:hover {
+        border-color: #ccc;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .day-header {
-        font-weight: bold;
-        margin-bottom: 5px;
-        color: #333;
-        font-size: 1.1em;
         text-align: right;
-    }
-    .event-card {
-        background-color: #f0f2f6;
-        border-left: 3px solid #ff4b4b;
-        padding: 4px;
-        margin-bottom: 4px;
-        border-radius: 3px;
-        font-size: 0.85em;
-        line-height: 1.2;
-        color: #000;
-    }
-    .event-time {
-        font-weight: bold;
-        color: #333;
         font-size: 0.9em;
-        margin-bottom: 2px;
+        font-weight: bold;
+        color: #888;
+        margin-bottom: 4px;
+        padding-right: 5px;
     }
-    .current-day {
+    .cal-event {
+        background-color: #e3f2fd;
+        border-left: 3px solid #2196f3;
+        color: #0d47a1;
+        padding: 3px 5px;
+        margin-bottom: 3px;
+        border-radius: 4px;
+        font-size: 0.75em;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: help;
+    }
+    .current-day-cell {
         border: 2px solid #ff4b4b !important;
-        background-color: #fff5f5 !important;
+        background-color: #fffbfc !important;
     }
-    /* Estilizar scrollbar para que sea finita */
-    .day-cell::-webkit-scrollbar { width: 4px; }
-    .day-cell::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 4px; }
+
+    /* --- AGENDA (TIMELINE) --- */
+    .agenda-card {
+        background-color: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 15px;
+        border-left: 6px solid #ff4b4b;
+        transition: transform 0.2s;
+    }
+    .agenda-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+    .agenda-date {
+        color: #ff4b4b;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-size: 0.85em;
+        letter-spacing: 1px;
+        margin-bottom: 5px;
+    }
+    .agenda-title {
+        font-size: 1.3em;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0;
+    }
+    .agenda-meta {
+        display: flex;
+        gap: 15px;
+        margin-top: 10px;
+        color: #6b7280;
+        font-size: 0.95em;
+    }
+    .tag {
+        background-color: #f3f4f6;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: 600;
+        color: #374151;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- CONSTANTES ---
-MESES_ES = {
-    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
-    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
-}
-DIAS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+# --- MAPEOS DE IDIOMA ---
+MESES = {1:"Enero", 2:"Febrero", 3:"Marzo", 4:"Abril", 5:"Mayo", 6:"Junio", 7:"Julio", 8:"Agosto", 9:"Septiembre", 10:"Octubre", 11:"Noviembre", 12:"Diciembre"}
+DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
-# --- FUNCIONES ---
+# --- FUNCIONES DE LIMPIEZA ---
+def limpiar_materia(txt):
+    if not isinstance(txt, str): return "Desconocida"
+    # Eliminar patrones de UT y Grupo
+    txt = re.sub(r'\s*[-–]?\s*UT.*', '', txt, flags=re.IGNORECASE)
+    txt = re.sub(r'\s*\(Grupo.*\)', '', txt, flags=re.IGNORECASE)
+    return txt.strip()
 
-def limpiar_nombre_materia(texto):
-    """Deja el nombre de la materia limpio para el filtro (quita UTs y Grupos)."""
-    if not isinstance(texto, str): return "Desconocida"
-    # Quitar guiones y UTs
-    texto_limpio = re.sub(r'\s*[-–]?\s*UT.*', '', texto, flags=re.IGNORECASE)
-    # Quitar Grupos entre paréntesis
-    texto_limpio = re.sub(r'\s*\(Grupo.*\)', '', texto_limpio, flags=re.IGNORECASE)
-    return texto_limpio.strip()
+def extraer_detalle(original, limpio):
+    if original == limpio: return "General"
+    det = original.replace(limpio, "").strip(" -–")
+    return det if det else "General"
 
-def procesar_detalle(texto_original, texto_limpio):
-    """Detecta qué información hemos borrado (UT, Grupo) para mostrarla luego."""
-    if texto_original == texto_limpio:
-        return "General"
-    return texto_original.replace(texto_limpio, "").strip(" -–")
-
-def parsear_fecha(fecha_str):
-    """Convierte fechas complejas de Notion a objetos Python."""
-    meses_map = {
-        "enero": "01", "febrero": "02", "marzo": "03", "abril": "04",
-        "mayo": "05", "junio": "06", "julio": "07", "agosto": "08",
-        "septiembre": "09", "octubre": "10", "noviembre": "11", "diciembre": "12"
-    }
+def parsear_fecha(txt):
+    if not isinstance(txt, str): return None, None, None
     try:
-        match = re.search(r"(\d{1,2}) de ([a-zA-Z]+) de (\d{4})", str(fecha_str).lower())
+        # Regex para "17 de octubre de 2025"
+        match = re.search(r"(\d{1,2})\s+de\s+([a-zA-Z]+)\s+de\s+(\d{4})", txt.lower())
         if not match: return None, None, None
         
         d, m_txt, a = match.groups()
-        m_num = meses_map.get(m_txt)
+        # Mapa inverso de meses
+        mes_map = {v.lower(): k for k, v in MESES.items()}
+        m_num = mes_map.get(m_txt)
+        
         if not m_num: return None, None, None
         
-        fecha = datetime.strptime(f"{a}-{m_num}-{d}", "%Y-%m-%d").date()
-        horas = re.findall(r"(\d{1,2}:\d{2})", str(fecha_str))
-        h_ini = horas[0] if horas else ""
-        h_fin = horas[1] if len(horas) > 1 else ""
+        fecha_obj = date(int(a), m_num, int(d))
         
-        return fecha, h_ini, h_fin
-    except:
+        # Extraer horas
+        horas = re.findall(r"(\d{1,2}:\d{2})", txt)
+        ini = horas[0] if horas else "??:??"
+        fin = horas[1] if len(horas) > 1 else ""
+        
+        return fecha_obj, ini, fin
+    except Exception as e:
         return None, None, None
 
 @st.cache_data
 def cargar_datos():
     lista = []
-    # Asegúrate de que estos archivos existen en tu GitHub/Carpeta
+    # AJUSTA LOS NOMBRES DE TUS ARCHIVOS AQUÍ
     archivos = [("cfgm.csv", "CFGM Gestión Admin."), ("cfgs.csv", "CFGS Admin. y Finanzas")]
     
-    for archivo, ciclo in archivos:
+    for f_name, ciclo_name in archivos:
         try:
-            df = pd.read_csv(archivo)
+            df = pd.read_csv(f_name)
             for _, row in df.iterrows():
                 raw_nom = str(row.get('Nombre', ''))
                 raw_fec = str(row.get('Fecha', ''))
                 profe = str(row.get('Profesor/a', ''))
                 
-                nom_limpio = limpiar_nombre_materia(raw_nom)
-                detalle = procesar_detalle(raw_nom, nom_limpio)
+                nom_clean = limpiar_materia(raw_nom)
+                detalle = extraer_detalle(raw_nom, nom_clean)
                 fecha, ini, fin = parsear_fecha(raw_fec)
                 
                 if fecha:
                     lista.append({
-                        "Ciclo": ciclo, "Materia": nom_limpio, "Detalle": detalle,
-                        "Profesor": profe, "Fecha": fecha, "Inicio": ini, "Fin": fin
+                        "Ciclo": ciclo_name,
+                        "Materia": nom_clean,
+                        "Detalle": detalle,
+                        "Profesor": profe,
+                        "Fecha": fecha,
+                        "Inicio": ini,
+                        "Fin": fin
                     })
-        except: continue
+        except FileNotFoundError:
+            continue
+            
     return pd.DataFrame(lista)
 
-# --- EJECUCIÓN PRINCIPAL ---
+# --- LÓGICA PRINCIPAL ---
 df = cargar_datos()
 
 if df.empty:
-    st.error("⚠️ No se han cargado datos. Verifica los archivos CSV.")
+    st.error("⚠️ No se cargaron datos. Verifica que los archivos .csv están en la carpeta.")
     st.stop()
 
-# --- SIDEBAR ---
-st.sidebar.header("🔍 Filtros")
-ciclos = sorted(df['Ciclo'].unique())
-sel_ciclo = st.sidebar.multiselect("Ciclo", ciclos, default=ciclos)
-df_f = df[df['Ciclo'].isin(sel_ciclo)]
+# --- SIDEBAR (FILTROS) ---
+st.sidebar.title("🔍 Filtros")
+ciclos_dispo = sorted(df['Ciclo'].unique())
+sel_ciclo = st.sidebar.multiselect("Ciclo", ciclos_dispo, default=ciclos_dispo)
 
-materias = sorted(df_f['Materia'].unique())
-sel_mat = st.sidebar.multiselect("Materia", materias)
-if sel_mat: df_f = df_f[df_f['Materia'].isin(sel_mat)]
+# Filtrado preliminar
+df_filtered = df[df['Ciclo'].isin(sel_ciclo)]
 
-ver_pasadas = st.sidebar.checkbox("Ver pasadas", False)
-if not ver_pasadas: df_f = df_f[df_f['Fecha'] >= date.today()]
+materias_dispo = sorted(df_filtered['Materia'].unique())
+sel_materia = st.sidebar.multiselect("Asignatura", materias_dispo)
 
-df_f = df_f.sort_values(['Fecha', 'Inicio'])
+if sel_materia:
+    df_filtered = df_filtered[df_filtered['Materia'].isin(sel_materia)]
 
-# --- DEFINICIÓN DE PESTAÑAS (Aquí estaba el error antes, ahora está incluido) ---
-tab_cal, tab_lista = st.tabs(["📆 Calendario Visual", "📋 Agenda Lista"])
+# --- INTERFAZ ---
+st.title("📚 Agenda de Tutorías")
 
-# --- PESTAÑA CALENDARIO ---
+tab_cal, tab_agenda = st.tabs(["📆 Calendario Mensual", "🎫 Agenda Próxima"])
+
+# ==========================================
+# PESTAÑA 1: CALENDARIO (Visualmente corregido)
+# ==========================================
 with tab_cal:
     c1, c2 = st.columns([1, 4])
     with c1:
-        # Selectores de fecha
         hoy = date.today()
-        mes_ver = st.selectbox("Mes", list(MESES_ES.keys()), index=hoy.month-1, format_func=lambda x: MESES_ES[x])
-        anio_ver = st.number_input("Año", value=hoy.year)
+        # Navegación
+        mes_view = st.selectbox("Mes", list(MESES.keys()), index=hoy.month-1, format_func=lambda x: MESES[x])
+        anio_view = st.number_input("Año", value=hoy.year, step=1)
     with c2:
-        st.markdown(f"### {MESES_ES[mes_ver]} {anio_ver}")
+        st.markdown(f"### {MESES[mes_view]} {anio_view}")
 
-    # Cabecera (Lunes - Domingo)
+    # Cabecera
     cols = st.columns(7)
-    for i, d in enumerate(DIAS_ES):
-        cols[i].markdown(f"<div style='text-align:center; font-weight:bold;'>{d}</div>", unsafe_allow_html=True)
-
-    # Dibujar días
-    cal = calendar.monthcalendar(anio_ver, mes_ver)
-    for semana in cal:
+    for i, d in enumerate(DIAS):
+        cols[i].markdown(f"<div style='text-align:center; font-weight:bold; color:#555;'>{d[:3]}</div>", unsafe_allow_html=True)
+    
+    # Matriz del mes
+    cal_matrix = calendar.monthcalendar(anio_view, mes_view)
+    
+    # IMPORTANTE: Aquí NO usamos filtros de "pasadas", usamos todo el DF filtrado por materia
+    df_cal = df_filtered.copy()
+    
+    for semana in cal_matrix:
         cols = st.columns(7)
-        for i, dia in enumerate(semana):
+        for i, dia_num in enumerate(semana):
             with cols[i]:
-                if dia == 0:
+                if dia_num == 0:
                     st.markdown('<div class="day-cell" style="background:#f9f9f9; border:none;"></div>', unsafe_allow_html=True)
                 else:
-                    fecha_actual = date(anio_ver, mes_ver, dia)
-                    es_hoy = fecha_actual == date.today()
-                    clase_hoy = "current-day" if es_hoy else ""
+                    fecha_celda = date(anio_view, mes_view, dia_num)
+                    es_hoy = fecha_celda == hoy
+                    clase_hoy = "current-day-cell" if es_hoy else ""
                     
-                    eventos = df_f[df_f['Fecha'] == fecha_actual]
+                    # Buscar eventos de este día
+                    eventos_dia = df_cal[df_cal['Fecha'] == fecha_celda]
                     
-                    # Crear HTML de tarjetas
-                    html_tarjetas = ""
-                    for _, ev in eventos.iterrows():
-                        # Si es "General", no mostramos texto extra
-                        txt_det = f"<br><span style='color:#666; font-weight:normal;'>{ev['Detalle']}</span>" if ev['Detalle'] != "General" else ""
-                        
-                        html_tarjetas += f"""
-                        <div class="event-card">
-                            <div class="event-time">{ev['Inicio']}</div>
-                            <div>{ev['Materia']}{txt_det}</div>
+                    html_evs = ""
+                    for _, ev in eventos_dia.iterrows():
+                        tooltip = f"{ev['Materia']} ({ev['Detalle']})&#10;Prof: {ev['Profesor']}"
+                        html_evs += f"""
+                        <div class="cal-event" title="{tooltip}">
+                            <b>{ev['Inicio']}</b> {ev['Materia']}
                         </div>
                         """
                     
-                    # HTML Final de la celda (SIN ESPACIOS AL INICIO para evitar errores)
-                    st.markdown(f"""
-<div class="day-cell {clase_hoy}">
-<div class="day-header">{dia}</div>
-{html_tarjetas}
-</div>
-""", unsafe_allow_html=True)
+                    # Renderizado HTML limpio (todo en una línea o pegado a la izquierda)
+                    st.markdown(f"""<div class="day-cell {clase_hoy}"><div class="day-header">{dia_num}</div>{html_evs}</div>""", unsafe_allow_html=True)
 
-# --- PESTAÑA LISTA ---
-with tab_lista:
-    if df_f.empty: st.info("No hay clases con estos filtros.")
-    for fecha, grupo in df_f.groupby('Fecha'):
-        st.markdown(f"##### {DIAS_ES[fecha.weekday()]} {fecha.day} de {MESES_ES[fecha.month]}")
-        for _, row in grupo.iterrows():
-            st.success(f"⏰ **{row['Inicio']}** | {row['Materia']} ({row['Detalle']}) - {row['Profesor']}")
+# ==========================================
+# PESTAÑA 2: AGENDA (Diseño Elegante)
+# ==========================================
+with tab_agenda:
+    # Filtro solo futuras para la agenda
+    df_agenda = df_filtered[df_filtered['Fecha'] >= hoy].sort_values(['Fecha', 'Inicio'])
+    
+    if df_agenda.empty:
+        st.info("✅ No tienes tutorías próximas con los filtros seleccionados.")
+    else:
+        # Agrupar por mes para separar secciones
+        meses_agenda = df_agenda['Fecha'].apply(lambda x: (x.year, x.month)).unique()
+        
+        for (anio, mes) in meses_agenda:
+            st.markdown(f"#### 🗓️ {MESES[mes]} {anio}")
+            
+            # Filtrar eventos de ese mes
+            df_mes = df_agenda[(df_agenda['Fecha'].apply(lambda x: x.month) == mes) & (df_agenda['Fecha'].apply(lambda x: x.year) == anio)]
+            
+            for _, row in df_mes.iterrows():
+                # Formato de fecha legible
+                dia_semana = DIAS[row['Fecha'].weekday()]
+                fecha_str = f"{dia_semana}, {row['Fecha'].day} de {MESES[row['Fecha'].month]}"
+                
+                # Diseño de Tarjeta HTML
+                st.markdown(f"""
+                <div class="agenda-card">
+                    <div class="agenda-date">{fecha_str}</div>
+                    <div class="agenda-title">{row['Materia']}</div>
+                    <div style="color: #4b5563; margin-top: 4px;">{row['Detalle']}</div>
+                    
+                    <div class="agenda-meta">
+                        <span class="tag">⏰ {row['Inicio']} {f"- {row['Fin']}" if row['Fin'] else ""}</span>
+                        <span class="tag">👨‍🏫 {row['Profesor']}</span>
+                        <span class="tag">🎓 {row['Ciclo']}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
