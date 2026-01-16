@@ -249,7 +249,7 @@ with tab_cal:
                     st.markdown(f"""<div class="day-cell {clase_hoy}"><div class="day-header">{dia_num}</div>{html_evs}</div>""", unsafe_allow_html=True)
 
 # ==========================================
-# PESTAÑA 2: AGENDA (Diseño Elegante)
+# PESTAÑA 2: AGENDA (Corregida)
 # ==========================================
 with tab_agenda:
     # Filtro solo futuras para la agenda
@@ -272,17 +272,17 @@ with tab_agenda:
                 dia_semana = DIAS[row['Fecha'].weekday()]
                 fecha_str = f"{dia_semana}, {row['Fecha'].day} de {MESES[row['Fecha'].month]}"
                 
-                # Diseño de Tarjeta HTML
+                # --- AQUÍ ESTÁ EL CAMBIO IMPORTANTE ---
+                # El HTML debe estar pegado totalmente a la izquierda, sin espacios delante
                 st.markdown(f"""
-                <div class="agenda-card">
-                    <div class="agenda-date">{fecha_str}</div>
-                    <div class="agenda-title">{row['Materia']}</div>
-                    <div style="color: #4b5563; margin-top: 4px;">{row['Detalle']}</div>
-                    
-                    <div class="agenda-meta">
-                        <span class="tag">⏰ {row['Inicio']} {f"- {row['Fin']}" if row['Fin'] else ""}</span>
-                        <span class="tag">👨‍🏫 {row['Profesor']}</span>
-                        <span class="tag">🎓 {row['Ciclo']}</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+<div class="agenda-card">
+<div class="agenda-date">{fecha_str}</div>
+<div class="agenda-title">{row['Materia']}</div>
+<div style="color: #4b5563; margin-top: 4px;">{row['Detalle']}</div>
+<div class="agenda-meta">
+<span class="tag">⏰ {row['Inicio']} {f"- {row['Fin']}" if row['Fin'] else ""}</span>
+<span class="tag">👨‍🏫 {row['Profesor']}</span>
+<span class="tag">🎓 {row['Ciclo']}</span>
+</div>
+</div>
+""", unsafe_allow_html=True)
