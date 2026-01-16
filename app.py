@@ -31,13 +31,11 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
 
-    /* --- 2. BARRA SUPERIOR (HEADER) OSCURA --- */
+    /* --- 2. BARRA SUPERIOR Y SIDEBAR OSCUROS --- */
     header[data-testid="stHeader"] {
         background-color: #050505 !important;
         border-bottom: 1px solid #1a1a1a;
     }
-
-    /* --- 3. SIDEBAR (MENÚ IZQUIERDO) OSCURO --- */
     [data-testid="stSidebar"] {
         background-color: #0a0a0a !important;
         border-right: 1px solid #222;
@@ -45,42 +43,36 @@ st.markdown("""
     
     /* Textos del sidebar */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
-    [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] div {
+    [data-testid="stSidebar"] span, [data-testid="stSidebar"] label, [data-testid="stSidebar"] div,
+    [data-testid="stSidebar"] p {
         color: #e0e0e0 !important;
     }
 
-    /* --- 4. INPUTS Y FILTROS (LOS CUADROS BLANCOS AHORA OSCUROS) --- */
-    /* Fondo del cuadro de selección */
+    /* --- 3. INPUTS, FILTROS Y CAJA DEL AÑO --- */
+    /* Selectores */
     div[data-baseweb="select"] > div {
         background-color: #1a1a1a !important;
         border-color: #333 !important;
         color: white !important;
     }
-    
-    /* Texto dentro del selector (Placeholder y valores) */
-    div[data-baseweb="select"] span {
-        color: #e0e0e0 !important;
-    }
-    
-    /* Iconos del selector (flechita, x) */
-    div[data-baseweb="select"] svg {
-        fill: #888 !important;
-    }
+    div[data-baseweb="select"] span { color: #e0e0e0 !important; }
+    div[data-baseweb="select"] svg { fill: #888 !important; }
 
-    /* Menú desplegable (opciones) */
-    div[role="listbox"] ul {
+    /* Inputs Numéricos */
+    div[data-baseweb="input"] > div {
         background-color: #1a1a1a !important;
+        border-color: #333 !important;
+        color: white !important;
     }
-    div[role="option"] {
-        color: #e0e0e0 !important;
-    }
-    
-    /* Etiquetas seleccionadas (chips) */
-    div[data-baseweb="tag"] {
-        background-color: #333 !important;
-    }
+    input { color: white !important; caret-color: white; }
+    button[tabindex="-1"] { background-color: #222 !important; color: white !important; }
 
-    /* --- 5. TARJETAS OSCURAS (AGENDA) --- */
+    /* Menús desplegables */
+    div[role="listbox"] ul { background-color: #1a1a1a !important; }
+    div[role="option"] { color: #e0e0e0 !important; }
+    div[data-baseweb="tag"] { background-color: #333 !important; }
+
+    /* --- 4. TARJETAS OSCURAS (AGENDA) --- */
     .action-card {
         background-color: #161616;
         border: 1px solid #2a2a2a;
@@ -93,14 +85,13 @@ st.markdown("""
         position: relative;
         overflow: hidden;
     }
-    
     .action-card:hover {
         background-color: #1f1f1f;
         transform: translateX(4px);
         border-color: #444;
     }
 
-    /* --- 6. TIPOGRAFÍA Y ELEMENTOS --- */
+    /* --- 5. TIPOGRAFÍA Y ELEMENTOS --- */
     h1, h2, h3, p { color: #ffffff !important; }
     
     .day-header {
@@ -123,7 +114,6 @@ st.markdown("""
         align-items: center;
         gap: 8px;
     }
-    
     .module-detail {
         font-size: 0.9rem;
         color: #aaa;
@@ -134,7 +124,6 @@ st.markdown("""
         gap: 6px;
     }
 
-    /* Badges / Etiquetas */
     .time-badge {
         background-color: #000;
         color: #fff;
@@ -148,7 +137,6 @@ st.markdown("""
         align-items: center;
         gap: 6px;
     }
-
     .prof-badge {
         font-size: 0.75rem;
         color: #666;
@@ -156,7 +144,6 @@ st.markdown("""
         align-items: center;
         gap: 4px;
     }
-    
     .cycle-badge {
         position: absolute;
         top: 8px;
@@ -169,7 +156,6 @@ st.markdown("""
         padding: 2px 5px;
         border-radius: 4px;
     }
-
     .color-bar {
         width: 4px;
         height: 50px;
@@ -178,7 +164,7 @@ st.markdown("""
         box-shadow: 0 0 8px rgba(0,0,0,0.3);
     }
 
-    /* --- 7. CALENDARIO DARK --- */
+    /* --- 6. CALENDARIO DARK --- */
     .day-cell {
         background-color: #111;
         border: 1px solid #222;
@@ -208,7 +194,6 @@ st.markdown("""
 
     ::-webkit-scrollbar { width: 6px; background: #050505; }
     ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -244,7 +229,6 @@ def parsear_fecha(txt):
 @st.cache_data
 def cargar_datos():
     lista = []
-    # ¡Revisa que los nombres de archivo sean correctos!
     archivos = [("cfgm.csv", "CFGM Gestión"), ("cfgs.csv", "CFGS Finanzas")]
     for f_name, c_name in archivos:
         try:
@@ -262,6 +246,9 @@ df = cargar_datos()
 
 # --- SIDEBAR OSCURO ---
 with st.sidebar:
+    # 1. LOGO
+    st.image("https://cdn-icons-png.flaticon.com/512/3771/3771343.png", width=80) 
+    
     st.markdown("### ⚙️ Preferencias")
     
     if not df.empty:
@@ -270,14 +257,18 @@ with st.sidebar:
         df_f = df[df['Ciclo'].isin(sel_ciclo)]
         
         materias = sorted(df_f['Módulo'].unique())
-        # AQUÍ ESTÁ EL CAMBIO DEL TEXTO DEL SELECTOR
         sel_mat = st.multiselect("Módulo formativo", materias, placeholder="Elige el módulo")
         if sel_mat: df_f = df_f[df_f['Módulo'].isin(sel_mat)]
+        
+        # --- AQUÍ ESTÁ EL NUEVO INTERRUPTOR DE PASADAS ---
+        st.markdown("---")
+        ver_pasadas = st.toggle("Mostrar tutorías pasadas", value=False)
+        
     else:
         st.error("No hay datos cargados.")
         df_f = pd.DataFrame()
+        ver_pasadas = False
 
-    st.markdown("---")
     st.caption("Modo Oscuro | IES Arca Real")
 
 # --- INTERFAZ PRINCIPAL ---
@@ -290,10 +281,17 @@ if df_f.empty:
 
 tab_agenda, tab_cal = st.tabs(["LISTA", "CALENDARIO"])
 
-# --- VISTA 1: AGENDA OSCURA CON ICONOS ---
+# --- VISTA 1: AGENDA OSCURA ---
 with tab_agenda:
     hoy = date.today()
-    df_view = df_f[df_f['Fecha'] >= hoy].sort_values(['Fecha', 'Inicio'])
+    
+    # LÓGICA DE FILTRADO DE FECHAS
+    if ver_pasadas:
+        # Si el usuario quiere ver todo, mostramos todo ordenado
+        df_view = df_f.sort_values(['Fecha', 'Inicio'])
+    else:
+        # Si no, solo desde hoy en adelante
+        df_view = df_f[df_f['Fecha'] >= hoy].sort_values(['Fecha', 'Inicio'])
     
     if df_view.empty: st.markdown("✅ *No hay tutorías pendientes.*")
     
@@ -306,9 +304,11 @@ with tab_agenda:
         for _, row in grupo.iterrows():
             c_neon = get_color_materia(row['Módulo'])
             
-            # Tarjeta con los nuevos iconos
+            # Cálculo de opacidad: si es fecha pasada, se ve semitransparente (0.5), si es futura se ve normal (1)
+            opacidad = "0.5" if row['Fecha'] < hoy else "1"
+            
             st.markdown(f"""
-            <div class="action-card">
+            <div class="action-card" style="opacity: {opacidad};">
                 <div class="color-bar" style="background-color: {c_neon}; box-shadow: 0 0 8px {c_neon}60;"></div>
                 <div style="flex-grow:1;">
                     <div class="cycle-badge">📂 {row['Ciclo']}</div>
