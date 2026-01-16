@@ -57,9 +57,14 @@ st.markdown("""
         color: white !important;
     }
     
-    /* Texto dentro del selector */
+    /* Texto dentro del selector (Placeholder y valores) */
     div[data-baseweb="select"] span {
         color: #e0e0e0 !important;
+    }
+    
+    /* Iconos del selector (flechita, x) */
+    div[data-baseweb="select"] svg {
+        fill: #888 !important;
     }
 
     /* Menú desplegable (opciones) */
@@ -85,6 +90,8 @@ st.markdown("""
         display: flex;
         align-items: center;
         transition: transform 0.2s, background-color 0.2s;
+        position: relative;
+        overflow: hidden;
     }
     
     .action-card:hover {
@@ -112,29 +119,55 @@ st.markdown("""
         font-size: 1.1rem;
         font-weight: 700;
         margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     
     .module-detail {
         font-size: 0.9rem;
         color: #aaa;
         font-weight: 300;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 
+    /* Badges / Etiquetas */
     .time-badge {
         background-color: #000;
         color: #fff;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.8rem;
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 0.85rem;
         font-weight: 600;
         border: 1px solid #333;
         white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 
     .prof-badge {
         font-size: 0.75rem;
         color: #666;
-        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .cycle-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        font-size: 0.65rem;
+        color: #444;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border: 1px solid #222;
+        padding: 2px 5px;
+        border-radius: 4px;
     }
 
     .color-bar {
@@ -233,11 +266,12 @@ with st.sidebar:
     
     if not df.empty:
         ciclos = sorted(df['Ciclo'].unique())
-        sel_ciclo = st.multiselect("Ciclo", ciclos, default=ciclos)
+        sel_ciclo = st.multiselect("Ciclo", ciclos, default=ciclos, placeholder="Elige el ciclo")
         df_f = df[df['Ciclo'].isin(sel_ciclo)]
         
         materias = sorted(df_f['Módulo'].unique())
-        sel_mat = st.multiselect("Módulo formativo", materias)
+        # AQUÍ ESTÁ EL CAMBIO DEL TEXTO DEL SELECTOR
+        sel_mat = st.multiselect("Módulo formativo", materias, placeholder="Elige el módulo")
         if sel_mat: df_f = df_f[df_f['Módulo'].isin(sel_mat)]
     else:
         st.error("No hay datos cargados.")
@@ -256,7 +290,7 @@ if df_f.empty:
 
 tab_agenda, tab_cal = st.tabs(["LISTA", "CALENDARIO"])
 
-# --- VISTA 1: AGENDA OSCURA ---
+# --- VISTA 1: AGENDA OSCURA CON ICONOS ---
 with tab_agenda:
     hoy = date.today()
     df_view = df_f[df_f['Fecha'] >= hoy].sort_values(['Fecha', 'Inicio'])
@@ -272,16 +306,18 @@ with tab_agenda:
         for _, row in grupo.iterrows():
             c_neon = get_color_materia(row['Módulo'])
             
+            # Tarjeta con los nuevos iconos
             st.markdown(f"""
             <div class="action-card">
                 <div class="color-bar" style="background-color: {c_neon}; box-shadow: 0 0 8px {c_neon}60;"></div>
                 <div style="flex-grow:1;">
+                    <div class="cycle-badge">📂 {row['Ciclo']}</div>
                     <div class="module-title" style="color: {c_neon};">{row['Módulo']}</div>
-                    <div class="module-detail">{row['Detalle']}</div>
+                    <div class="module-detail">📌 {row['Detalle']}</div>
                     <div class="prof-badge">👨‍🏫 {row['Profesor']}</div>
                 </div>
                 <div style="text-align:right;">
-                    <div class="time-badge">{row['Inicio']}</div>
+                    <div class="time-badge">🕒 {row['Inicio']}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
