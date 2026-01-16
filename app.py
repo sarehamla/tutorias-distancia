@@ -6,47 +6,40 @@ import hashlib
 from datetime import datetime, date
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Agenda IES Arca Real", layout="centered", page_icon="📓")
+st.set_page_config(page_title="Agenda IES Arca Real", layout="centered", page_icon="🌑")
 
-# --- PALETA DE COLORES ESTILO MOLESKINE (Tonos sobrios y elegantes) ---
-COLORES_MOLESKINE = [
-    "#E74C3C", "#8E44AD", "#3498DB", "#16A085", "#F39C12", "#D35400", 
-    "#2C3E50", "#27AE60", "#7F8C8D", "#C0392B", "#2980B9", "#884EA0"
+# --- PALETA DE COLORES VIBRANTES (Para que resalten sobre fondo oscuro) ---
+COLORES_MODULOS = [
+    "#FF6B6B", "#4ECDC4", "#FFE66D", "#1A535C", "#F7FFF7", 
+    "#FF9F1C", "#CBF3F0", "#2EC4B6", "#E71D36", "#A786DF"
 ]
 
 def get_color_materia(texto):
-    """Genera un color único y consistente para cada asignatura basado en su nombre."""
+    """Genera un color único para cada módulo."""
     if not isinstance(texto, str): return "#333"
-    # Usamos un hash para que 'Inglés' siempre de el mismo color, por ejemplo.
     hash_obj = hashlib.md5(texto.encode())
     hash_int = int(hash_obj.hexdigest(), 16)
-    return COLORES_MOLESKINE[hash_int % len(COLORES_MOLESKINE)]
+    return COLORES_MODULOS[hash_int % len(COLORES_MODULOS)]
 
-# --- ESTILOS CSS (MOLESKINE VIBES) ---
+# --- ESTILOS CSS (DARK MODE) ---
 st.markdown("""
 <style>
-    /* Fuente elegante con serifa para títulos (Playfair Display) y limpia para texto (Lato) */
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@300;400;700&display=swap');
 
-    /* Fondo general sutilmente crema (simulado en bloques) */
-    .stApp {
-        background-color: #fdfbf7; 
-    }
-
-    h1, h2, h3, h4 { font-family: 'Playfair Display', serif; color: #2c3e50; }
-    
-    /* --- AGENDA TIMELINE --- */
+    /* --- AJUSTES GENERALES PARA MODO OSCURO --- */
+    /* Forzamos colores claros en textos principales por si acaso */
+    h1, h2, h3, h4, p, div { color: #e0e0e0; }
     
     .day-separator {
         font-family: 'Playfair Display', serif;
-        font-size: 1.5em;
+        font-size: 1.6em;
         font-weight: bold;
-        color: #2c3e50;
+        color: #f0f0f0; /* Blanco casi puro */
         margin-top: 35px;
         margin-bottom: 20px;
-        border-bottom: 1px solid #d0d0d0;
+        border-bottom: 1px solid #444; /* Línea gris oscura */
         padding-bottom: 5px;
-        letter-spacing: 0.5px;
+        letter-spacing: 1px;
     }
 
     .timeline-row {
@@ -62,7 +55,7 @@ st.markdown("""
         padding-right: 15px;
         padding-top: 15px;
         font-family: 'Lato', sans-serif;
-        color: #7f8c8d;
+        color: #aaa; /* Gris claro */
         font-size: 0.9em;
     }
 
@@ -75,7 +68,7 @@ st.markdown("""
     }
     .line-vertical {
         width: 1px;
-        background-color: #bdc3c7;
+        background-color: #555; /* Gris medio */
         height: 100%;
         position: absolute;
         top: 0;
@@ -87,17 +80,17 @@ st.markdown("""
         position: relative;
         top: 20px;
         z-index: 2;
-        border: 2px solid #fdfbf7; /* Mismo color que el fondo para efecto recorte */
+        border: 2px solid #262730; /* Mismo color que el fondo de la tarjeta oscura */
     }
 
-    /* Tarjeta Moleskine */
+    /* Tarjeta Dark Mode */
     .card-col {
         flex-grow: 1;
-        background-color: #faf9f6; /* Blanco roto / Hueso */
+        background-color: #262730; /* Gris oscuro Streamlit */
         padding: 15px 20px;
-        border-radius: 4px; /* Bordes menos redondeados, más libreta */
-        border: 1px solid #e0e0e0;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.03); /* Sombra muy sutil */
+        border-radius: 8px;
+        border: 1px solid #333;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         margin-bottom: 5px;
         border-left-width: 4px;
         border-left-style: solid;
@@ -105,36 +98,37 @@ st.markdown("""
     }
     .card-col:hover {
         transform: translateX(3px);
-        box-shadow: 3px 3px 8px rgba(0,0,0,0.06);
+        background-color: #30323d; /* Un pelín más claro al pasar ratón */
+        border-color: #555;
     }
 
     .materia-title {
         font-family: 'Lato', sans-serif;
         font-weight: 700;
         font-size: 1.1em;
-        color: #2c3e50;
+        color: #ffffff !important; /* Blanco fuerza */
         margin-bottom: 2px;
     }
     .materia-detail {
         font-family: 'Lato', sans-serif;
         font-weight: 300;
         font-size: 0.95em;
-        color: #555;
+        color: #bbb !important; /* Gris claro */
         font-style: italic;
     }
     .meta-info {
         margin-top: 10px;
         font-size: 0.75em;
-        color: #95a5a6;
+        color: #888 !important;
         text-transform: uppercase;
         letter-spacing: 1px;
     }
 
-    /* --- CALENDARIO --- */
+    /* --- CALENDARIO DARK --- */
     .day-cell {
-        background-color: #faf9f6;
-        border: 1px solid #e0e0e0;
-        border-radius: 3px;
+        background-color: #262730;
+        border: 1px solid #444;
+        border-radius: 4px;
         height: 100px;
         padding: 4px;
         overflow-y: auto;
@@ -144,26 +138,28 @@ st.markdown("""
         font-family: 'Playfair Display', serif;
         text-align: right;
         font-weight: bold;
-        color: #7f8c8d;
+        color: #aaa;
     }
     .cal-event {
         font-size: 0.75em;
         padding: 2px 4px;
         margin-bottom: 2px;
         border-radius: 2px;
-        color: white; /* Texto blanco para resaltar sobre color fondo */
+        color: #111; /* Texto oscuro sobre etiqueta de color */
+        font-weight: 600;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
     .current-day-cell {
-        background-color: #fff !important;
-        border: 2px solid #2c3e50 !important;
+        background-color: #1f2029 !important;
+        border: 2px solid #FF6B6B !important;
     }
     
-    /* Scrollbars elegantes */
+    /* Scrollbars oscuras */
     ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 2px; }
+    ::-webkit-scrollbar-track { background: #1e1e1e; }
+    ::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
 
 </style>
 """, unsafe_allow_html=True)
@@ -172,7 +168,7 @@ st.markdown("""
 MESES = {1:"Enero", 2:"Febrero", 3:"Marzo", 4:"Abril", 5:"Mayo", 6:"Junio", 7:"Julio", 8:"Agosto", 9:"Septiembre", 10:"Octubre", 11:"Noviembre", 12:"Diciembre"}
 DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
-# --- FUNCIONES DE PARSEO ---
+# --- FUNCIONES ---
 def limpiar_materia(txt):
     if not isinstance(txt, str): return "Desconocida"
     txt = re.sub(r'\s*[-–]?\s*UT.*', '', txt, flags=re.IGNORECASE)
@@ -193,12 +189,15 @@ def parsear_fecha(txt):
         mes_map = {v.lower(): k for k, v in MESES.items()}
         m_num = mes_map.get(m_txt)
         if not m_num: return None, None, None
-        return date(int(a), m_num, int(d)), re.findall(r"(\d{1,2}:\d{2})", txt)[0], re.findall(r"(\d{1,2}:\d{2})", txt)[1] if len(re.findall(r"(\d{1,2}:\d{2})", txt))>1 else ""
+        fecha = date(int(a), m_num, int(d))
+        horas = re.findall(r"(\d{1,2}:\d{2})", txt)
+        return fecha, horas[0] if horas else "??", horas[1] if len(horas)>1 else ""
     except: return None, None, None
 
 @st.cache_data
 def cargar_datos():
     lista = []
+    # AJUSTA AQUÍ TUS ARCHIVOS
     archivos = [("cfgm.csv", "CFGM Gestión"), ("cfgs.csv", "CFGS Finanzas")]
     for f_name, c_name in archivos:
         try:
@@ -207,7 +206,7 @@ def cargar_datos():
                 r_n, r_f, prof = str(row.get('Nombre','')), str(row.get('Fecha','')), str(row.get('Profesor/a',''))
                 limpio = limpiar_materia(r_n)
                 f, i, end = parsear_fecha(r_f)
-                if f: lista.append({"Ciclo":c_name, "Materia":limpio, "Detalle":extraer_detalle(r_n, limpio), "Profesor":prof, "Fecha":f, "Inicio":i, "Fin":end})
+                if f: lista.append({"Ciclo":c_name, "Módulo":limpio, "Detalle":extraer_detalle(r_n, limpio), "Profesor":prof, "Fecha":f, "Inicio":i, "Fin":end})
         except: continue
     return pd.DataFrame(lista)
 
@@ -217,21 +216,21 @@ if df.empty:
     st.error("No se encontraron los archivos CSV.")
     st.stop()
 
-# --- SIDEBAR (FILTROS) ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/2965/2965358.png", width=50)
-    st.markdown("### Filtros")
+    st.markdown("## ⚙️ Filtros")
     ciclos = sorted(df['Ciclo'].unique())
     sel_ciclo = st.multiselect("Ciclo", ciclos, default=ciclos)
     df_f = df[df['Ciclo'].isin(sel_ciclo)]
     
-    materias = sorted(df_f['Materia'].unique())
-    sel_mat = st.multiselect("Asignatura", materias)
-    if sel_mat: df_f = df_f[df_f['Materia'].isin(sel_mat)]
+    # CAMBIO: Ahora usamos 'Módulo formativo' en vez de 'Asignatura'
+    materias = sorted(df_f['Módulo'].unique())
+    sel_mat = st.multiselect("Módulo formativo", materias)
+    if sel_mat: df_f = df_f[df_f['Módulo'].isin(sel_mat)]
 
 # --- VISTAS ---
 st.title("Agenda de Tutorías")
-st.markdown(f"**IES Arca Real** | {date.today().year}")
+st.caption(f"IES Arca Real | Curso {date.today().year} - Modo Oscuro")
 
 tab_agenda, tab_cal = st.tabs(["📓 Agenda Diaria", "🗓️ Calendario Mensual"])
 
@@ -242,7 +241,6 @@ with tab_agenda:
     
     if df_view.empty: st.info("No hay tutorías pendientes.")
     
-    # Iterar por días
     for fecha, grupo in df_view.groupby('Fecha'):
         dia_str = DIAS[fecha.weekday()]
         fecha_fmt = f"{dia_str}, {fecha.day} de {MESES[fecha.month]}"
@@ -250,8 +248,8 @@ with tab_agenda:
         st.markdown(f'<div class="day-separator">{fecha_fmt}</div>', unsafe_allow_html=True)
         
         for _, row in grupo.iterrows():
-            # Obtener color único para esta materia
-            color_tema = get_color_materia(row['Materia'])
+            # Color del módulo
+            color_tema = get_color_materia(row['Módulo'])
             
             st.markdown(f"""
 <div class="timeline-row">
@@ -261,10 +259,10 @@ with tab_agenda:
 </div>
 <div class="line-col">
     <div class="line-vertical"></div>
-    <div class="line-dot" style="background-color: {color_tema};"></div>
+    <div class="line-dot" style="border-color: #262730; background-color: {color_tema};"></div>
 </div>
 <div class="card-col" style="border-left-color: {color_tema};">
-    <div class="materia-title" style="color:{color_tema}">{row['Materia']}</div>
+    <div class="materia-title">{row['Módulo']}</div>
     <div class="materia-detail">{row['Detalle']}</div>
     <div class="meta-info">
         👨‍🏫 {row['Profesor']} &nbsp; | &nbsp; 🎓 {row['Ciclo']}
@@ -295,7 +293,7 @@ with tab_cal:
                     
                     html_evs = ""
                     for _, e in evs.iterrows():
-                        c_ev = get_color_materia(e['Materia'])
-                        html_evs += f'<div class="cal-event" style="background-color:{c_ev};" title="{e["Materia"]}">{e["Inicio"]} {e["Materia"][:9]}..</div>'
+                        c_ev = get_color_materia(e['Módulo'])
+                        html_evs += f'<div class="cal-event" style="background-color:{c_ev};" title="{e["Módulo"]}">{e["Inicio"]} {e["Módulo"][:9]}..</div>'
                     
                     st.markdown(f"""<div class="day-cell {clase}"><div class="day-header">{d}</div>{html_evs}</div>""", unsafe_allow_html=True)
